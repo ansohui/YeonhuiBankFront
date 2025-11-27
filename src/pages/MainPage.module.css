@@ -65,15 +65,45 @@
   border: 1px solid rgba(52, 211, 153, 0.2);
 }
 
-.subBalance {
+.accountList {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
   gap: 12px;
   align-items: start;
   margin-top: 14px;
 }
 
+.accountCard {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 12px;
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+  transition: transform 120ms ease, border-color 120ms ease;
+}
+
+.accountCard:hover {
+  transform: translateY(-1px);
+  border-color: rgba(110, 231, 183, 0.5);
+}
+
 .subAmount {
   margin: 4px 0 0;
   font-size: 18px;
+}
+
+.cardActions {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.actionChip {
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 999px;
+  padding: 6px 10px;
+  font-size: 12px;
+  color: var(--muted);
 }
