@@ -24,6 +24,12 @@ body {
   font-family: 'Space Grotesk', 'Pretendard', system-ui, -apple-system, sans-serif;
 }
 
+html,
+body,
+#root {
+  min-height: 100%;
+}
+
 .App {
   min-height: 100vh;
   display: flex;
@@ -41,6 +47,11 @@ body {
   padding: 18px 18px 24px;
   backdrop-filter: blur(10px);
   box-shadow: 0 24px 60px rgba(0, 0, 0, 0.45);
+  min-height: 90vh;
+  max-height: 95vh;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
 }
 
 .tab-nav {
