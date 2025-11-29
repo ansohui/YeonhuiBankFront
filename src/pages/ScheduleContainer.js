@@ -5,65 +5,115 @@ import { fetchMyAccountsAPI } from "../api/accounts";
 import {
   createScheduleAPI,
   fetchSchedulesByFromAccountAPI,
+  fetchMySchedulesAPI,   // 🔹 추가
 } from "../api/scheduledTransactions";
 
 function ScheduleContainer() {
   const { accountId } = useParams();
   const [accounts, setAccounts] = useState([]);
   const [schedules, setSchedules] = useState([]);
-  const [form, setForm] = useState({ from: "", to: "", amount: "", memo: "", day: "매달 1일" });
+  const [form, setForm] = useState({
+    from: "",
+    to: "",
+    amount: "",
+    memo: "",
+    day: "매달 1일",
+  });
 
+  // 1) 내 계좌 목록 불러오기
   useEffect(() => {
     const load = async () => {
-      // GET /api/accounts/me : 내 계좌 목록 조회
       try {
         const res = await fetchMyAccountsAPI();
         const data = res?.data?.data ?? res?.data ?? {};
         const content = data?.content || [];
         setAccounts(content);
-        const initial = accountId || content[0]?.accountNum || content[0]?.id || "";
-        setForm((prev) => ({ ...prev, from: initial }));
+
+        // 🔹 초기 출금 계좌: 계좌 "id" 를 사용 (PK)
+        const initialId =
+          accountId ||
+          (content[0]?.id != null ? String(content[0].id) : "");
+
+        setForm((prev) => ({ ...prev, from: initialId }));
       } catch (err) {
+        console.error(err);
         setAccounts([]);
       }
     };
     load();
   }, [accountId]);
 
+  // 2) 예약이체 목록 불러오기
   useEffect(() => {
     const loadSchedules = async () => {
+      // 아직 from 선택 안 됐으면 호출 안 함
       if (!form.from) return;
+
       try {
-        // GET /api/scheduled-transactions/account/{fromAccountId} : 출금계좌 기준 예약 목록
-        const res = await fetchSchedulesByFromAccountAPI(form.from);
+        let res;
+
+        // 🔹 "전체" 같은 값을 쓸 경우를 대비
+        if (form.from === "any") {
+          // → GET /api/scheduled-transactions/my
+          res = await fetchMySchedulesAPI();
+        } else {
+          // → GET /api/scheduled-transactions/account/{fromAccountId}
+          const fromId = Number(form.from);
+          if (Number.isNaN(fromId)) {
+            console.warn("fromAccountId가 숫자가 아닙니다:", form.from);
+            setSchedules([]);
+            return;
+          }
+          res = await fetchSchedulesByFromAccountAPI(fromId);
+        }
+
         const data = res?.data?.data ?? res?.data ?? {};
         const content = data?.content || data || [];
         setSchedules(content);
-      } catch {
+      } catch (e) {
+        console.error(e);
         setSchedules([]);
       }
     };
     loadSchedules();
   }, [form.from]);
 
+  // 3) 선택된 출금 계좌 (id 기준)
   const selectedAccount = useMemo(() => {
-    return accounts.find((a) => a.accountNum === form.from || a.id === form.from) || accounts[0];
+    if (!accounts.length) return null;
+    if (form.from === "any") return null;
+
+    return (
+      accounts.find((a) => String(a.id) === String(form.from)) || accounts[0]
+    );
   }, [accounts, form.from]);
 
+  // 4) 예약이체 생성
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      // POST /api/scheduled-transactions : 예약 등록
+      const fromId = Number(form.from);
+      const toId = Number(form.to);
+
+      if (Number.isNaN(fromId) || Number.isNaN(toId)) {
+        window.alert("출금/입금 계좌 선택이 잘못되었습니다.");
+        return;
+      }
+
       await createScheduleAPI({
-        fromAccountId: form.from,
-        toAccountId: form.to,
+        fromAccountId: fromId,
+        toAccountId: toId,
         amount: Number(form.amount || 0),
         memo: form.memo,
-        frequency: form.day,
+        // ⚠️ 아래 frequency / startDate / runTime 등은
+        // 백엔드 DTO 설계에 맞게 더 넣어줘야 할 수도 있음
+        // 지금은 구조만 맞춰둔 상태
       });
+
       window.alert("예약이체가 등록되었습니다.");
       setForm((prev) => ({ ...prev, amount: "", memo: "" }));
-    } catch {
+    } catch (e) {
+      console.error(e);
       window.alert("예약이체 등록에 실패했습니다.");
     }
   };
@@ -74,9 +124,10 @@ function ScheduleContainer() {
       form={form}
       onChange={setForm}
       onSubmit={handleSubmit}
+      // 🔹 드롭다운에 쓸 계좌 목록: value는 id, label은 계좌번호
       accounts={accounts.map((a) => ({
-        id: a.accountNum || a.id,
-        name: a.accountType || "계좌",
+        id: String(a.id),           // **id 기반으로 통일**
+        name: a.accountNum || "계좌",
       }))}
       selectedAccount={selectedAccount}
     />
